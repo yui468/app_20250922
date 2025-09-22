@@ -14,7 +14,9 @@ import ReactFlow, {
     ReactFlowProvider,
     applyNodeChanges,
     applyEdgeChanges,
-    type NodeProps
+    type NodeProps,
+    Handle,
+    Position
 } from "reactflow";
 
 type MapData = {
@@ -59,6 +61,8 @@ function EditableNode({ id, data, selected }: NodeProps<EditableNodeData>) {
                 textAlign: "center"
             }}
         >
+            <Handle type="target" position={Position.Left} style={{ background: "#a78bfa", width: 10, height: 10, border: "2px solid #fff" }} />
+            <Handle type="source" position={Position.Right} style={{ background: "#a78bfa", width: 10, height: 10, border: "2px solid #fff" }} />
             {editing ? (
                 <input
                     autoFocus
