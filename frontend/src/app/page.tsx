@@ -127,16 +127,23 @@ function MindmapEditor() {
         setEdges((prev) => addEdge({ ...connection, type: 'bezier', style: { stroke: randomPastel(), strokeWidth: 2 } }, prev));
     }, []);
 
-    const handleDoubleClick = useCallback((event: React.MouseEvent) => {
-        const target = event.target as HTMLElement;
-        if (!target.classList.contains('react-flow__pane')) return; // 空白（pane）のみ
+    const onChangeLabel = useCallback((id: string, next: string) => {
+        setNodes((prev) => prev.map((n) => n.id === id ? { ...n, data: { ...(n.data as any), label: next } } : n));
+    }, []);
+
+    useEffect(() => {
+        setNodes((prev) => prev.map((n) => ({ ...n, data: { ...(n.data as any), onChangeLabel } })));
+    }, [onChangeLabel]);
+
+    const handlePaneClick = useCallback((event: React.MouseEvent) => {
+        if (event.detail !== 2) return; // ダブルクリック時のみ
         const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
         const newId = String(idCounterRef.current++);
         setNodes((prev) => [
             ...prev,
-            { id: newId, position, data: { label: `ノード ${newId}` }, type: 'editable' }
+            { id: newId, position, data: { label: `ノード ${newId}`, onChangeLabel }, type: 'editable' }
         ]);
-    }, [screenToFlowPosition]);
+    }, [screenToFlowPosition, onChangeLabel]);
 
     const onExportJson = useCallback(() => {
         const nodesForExport: Node[] = nodes.map((n) => ({
@@ -177,10 +184,6 @@ function MindmapEditor() {
         idCounterRef.current = 1;
     }, []);
 
-    const onChangeLabel = useCallback((id: string, next: string) => {
-        setNodes((prev) => prev.map((n) => n.id === id ? { ...n, data: { ...(n.data as any), label: next } } : n));
-    }, []);
-
     const nodeTypes = useMemo(() => ({ editable: EditableNode }), []);
 
     return (
@@ -191,7 +194,7 @@ function MindmapEditor() {
                 onNodesChange={(changes) => setNodes((nds) => applyNodeChanges(changes, nds))}
                 onEdgesChange={(changes) => setEdges((eds) => applyEdgeChanges(changes, eds))}
                 onConnect={onConnect}
-                onDoubleClick={handleDoubleClick}
+                onPaneClick={handlePaneClick}
                 fitView
                 nodeTypes={nodeTypes}
                 defaultEdgeOptions={{ type: 'bezier', style: { stroke: '#a78bfa', strokeWidth: 2 } }}
