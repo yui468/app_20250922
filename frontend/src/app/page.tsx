@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
     addEdge,
     Background,
@@ -13,13 +13,75 @@ import ReactFlow, {
     useReactFlow,
     ReactFlowProvider,
     applyNodeChanges,
-    applyEdgeChanges
+    applyEdgeChanges,
+    type NodeProps
 } from "reactflow";
 
 type MapData = {
     nodes: Node[];
     edges: Edge[];
 };
+
+type EditableNodeData = {
+    label: string;
+    onChangeLabel?: (id: string, next: string) => void;
+};
+
+function EditableNode({ id, data, selected }: NodeProps<EditableNodeData>) {
+    const [editing, setEditing] = useState<boolean>(false);
+    const [value, setValue] = useState<string>(data.label ?? "");
+
+    useEffect(() => {
+        setValue(data.label ?? "");
+    }, [data.label]);
+
+    const startEdit = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setEditing(true);
+    };
+
+    const stopEdit = () => {
+        setEditing(false);
+        data.onChangeLabel?.(id, value);
+    };
+
+    return (
+        <div
+            onClick={startEdit}
+            onDoubleClick={(e) => e.stopPropagation()}
+            style={{
+                padding: 8,
+                borderRadius: 8,
+                background: "#fff",
+                border: selected ? "2px solid #8b5cf6" : "1px solid #e5e7eb",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+                minWidth: 100,
+                textAlign: "center"
+            }}
+        >
+            {editing ? (
+                <input
+                    autoFocus
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    onBlur={stopEdit}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") stopEdit();
+                        if (e.key === "Escape") setEditing(false);
+                    }}
+                    style={{
+                        width: "100%",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 6,
+                        padding: "4px 6px"
+                    }}
+                />
+            ) : (
+                <span>{data.label}</span>
+            )}
+        </div>
+    );
+}
 
 function Toolbar({ onExportJson, onImportJson, onClear }: {
     onExportJson: () => void;
@@ -49,28 +111,39 @@ function Toolbar({ onExportJson, onImportJson, onClear }: {
 }
 
 function MindmapEditor() {
-    const [nodes, setNodes] = useState<Node[]>([
-        { id: "1", position: { x: 0, y: 0 }, data: { label: "中心アイデア" }, type: "default" }
+    const [nodes, setNodes] = useState<Node<EditableNodeData>[]>([
+        { id: "1", position: { x: 0, y: 0 }, data: { label: "中心アイデア" }, type: "editable" }
     ]);
     const [edges, setEdges] = useState<Edge[]>([]);
     const idCounterRef = useRef<number>(2);
     const { screenToFlowPosition } = useReactFlow();
 
+    const randomPastel = (): string => {
+        const h = Math.floor(Math.random() * 360);
+        return `hsl(${h} 70% 70%)`;
+    };
+
     const onConnect = useCallback((connection: Connection) => {
-        setEdges((prev) => addEdge({ ...connection, type: 'smoothstep' }, prev));
+        setEdges((prev) => addEdge({ ...connection, type: 'bezier', style: { stroke: randomPastel(), strokeWidth: 2 } }, prev));
     }, []);
 
-  const handlePaneDoubleClick = useCallback((event: React.MouseEvent) => {
+    const handleDoubleClick = useCallback((event: React.MouseEvent) => {
+        const target = event.target as HTMLElement;
+        if (!target.classList.contains('react-flow__pane')) return; // 空白（pane）のみ
         const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
         const newId = String(idCounterRef.current++);
         setNodes((prev) => [
             ...prev,
-            { id: newId, position, data: { label: `ノード ${newId}` }, type: 'default' }
+            { id: newId, position, data: { label: `ノード ${newId}` }, type: 'editable' }
         ]);
     }, [screenToFlowPosition]);
 
     const onExportJson = useCallback(() => {
-        const data: MapData = { nodes, edges };
+        const nodesForExport: Node[] = nodes.map((n) => ({
+            ...n,
+            data: { label: (n.data as EditableNodeData).label }
+        }));
+        const data: MapData = { nodes: nodesForExport, edges };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -84,7 +157,12 @@ function MindmapEditor() {
         try {
             const text = await file.text();
             const parsed = JSON.parse(text) as MapData;
-            setNodes(parsed.nodes ?? []);
+            const restored = (parsed.nodes ?? []).map((n) => ({
+                ...n,
+                type: 'editable',
+                data: { label: (n as any).data?.label, onChangeLabel }
+            })) as Node<EditableNodeData>[];
+            setNodes(restored);
             setEdges(parsed.edges ?? []);
             const maxId = parsed.nodes?.reduce((m, n) => Math.max(m, Number(n.id) || 0), 0) ?? 0;
             idCounterRef.current = Math.max(2, maxId + 1);
@@ -99,7 +177,11 @@ function MindmapEditor() {
         idCounterRef.current = 1;
     }, []);
 
-    const nodeTypes = useMemo(() => ({}), []);
+    const onChangeLabel = useCallback((id: string, next: string) => {
+        setNodes((prev) => prev.map((n) => n.id === id ? { ...n, data: { ...(n.data as any), label: next } } : n));
+    }, []);
+
+    const nodeTypes = useMemo(() => ({ editable: EditableNode }), []);
 
     return (
         <div style={{ width: '100vw', height: '100vh' }}>
@@ -109,9 +191,10 @@ function MindmapEditor() {
                 onNodesChange={(changes) => setNodes((nds) => applyNodeChanges(changes, nds))}
                 onEdgesChange={(changes) => setEdges((eds) => applyEdgeChanges(changes, eds))}
                 onConnect={onConnect}
-        onDoubleClick={handlePaneDoubleClick}
+                onDoubleClick={handleDoubleClick}
                 fitView
                 nodeTypes={nodeTypes}
+                defaultEdgeOptions={{ type: 'bezier', style: { stroke: '#a78bfa', strokeWidth: 2 } }}
             >
                 <Background />
                 <MiniMap />
