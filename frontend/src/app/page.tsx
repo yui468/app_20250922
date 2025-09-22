@@ -60,7 +60,7 @@ function MindmapEditor() {
         setEdges((prev) => addEdge({ ...connection, type: 'smoothstep' }, prev));
     }, []);
 
-    const handlePaneDoubleClick = useCallback((event: React.MouseEvent) => {
+  const handlePaneDoubleClick = useCallback((event: React.MouseEvent) => {
         const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
         const newId = String(idCounterRef.current++);
         setNodes((prev) => [
@@ -109,7 +109,7 @@ function MindmapEditor() {
                 onNodesChange={(changes) => setNodes((nds) => applyNodeChanges(changes, nds))}
                 onEdgesChange={(changes) => setEdges((eds) => applyEdgeChanges(changes, eds))}
                 onConnect={onConnect}
-                onPaneDoubleClick={handlePaneDoubleClick}
+        onDoubleClick={handlePaneDoubleClick}
                 fitView
                 nodeTypes={nodeTypes}
             >
