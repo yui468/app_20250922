@@ -47,22 +47,23 @@ function EditableNode({ id, data, selected }: NodeProps<EditableNodeData>) {
         data.onChangeLabel?.(id, value);
     };
 
+    const boxShadow = selected ? "0 0 0 3px #8b5cf6" : "0 1px 2px rgba(0,0,0,0.06)";
     return (
         <div
             onClick={startEdit}
             onDoubleClick={(e) => e.stopPropagation()}
             style={{
                 padding: 8,
-                borderRadius: 8,
+                borderRadius: 10,
                 background: "#fff",
-                border: selected ? "2px solid #8b5cf6" : "1px solid #e5e7eb",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
-                minWidth: 100,
+                border: "1px solid #e5e7eb",
+                boxShadow,
+                minWidth: 140,
                 textAlign: "center"
             }}
         >
-            <Handle type="target" position={Position.Left} style={{ background: "#a78bfa", width: 10, height: 10, border: "2px solid #fff" }} />
-            <Handle type="source" position={Position.Right} style={{ background: "#a78bfa", width: 10, height: 10, border: "2px solid #fff" }} />
+            <Handle type="target" position={Position.Left} style={{ background: "#8b5cf6", width: 10, height: 10, border: "2px solid #fff", transform: "translateX(-6px)" }} />
+            <Handle type="source" position={Position.Right} style={{ background: "#8b5cf6", width: 10, height: 10, border: "2px solid #fff", transform: "translateX(6px)" }} />
             {editing ? (
                 <input
                     autoFocus
