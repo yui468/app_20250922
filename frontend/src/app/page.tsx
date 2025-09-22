@@ -11,7 +11,9 @@ import ReactFlow, {
     Node,
     Panel,
     useReactFlow,
-    ReactFlowProvider
+    ReactFlowProvider,
+    applyNodeChanges,
+    applyEdgeChanges
 } from "reactflow";
 
 type MapData = {
@@ -104,11 +106,8 @@ function MindmapEditor() {
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
-                onNodesChange={(changes) => setNodes((nds) => nds.map((n) => {
-                    const change = changes.find((c) => c.id === n.id);
-                    return change && change.type === 'position' && change.position ? { ...n, position: change.position } : n;
-                }))}
-                onEdgesChange={(changes) => setEdges((eds) => eds)}
+                onNodesChange={(changes) => setNodes((nds) => applyNodeChanges(changes, nds))}
+                onEdgesChange={(changes) => setEdges((eds) => applyEdgeChanges(changes, eds))}
                 onConnect={onConnect}
                 onPaneDoubleClick={handlePaneDoubleClick}
                 fitView
